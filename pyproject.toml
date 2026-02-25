@@ -1,0 +1,48 @@
+[project]
+name = "secret-gitlab-trigger"
+version = "1.0.3"
+description = "Cloud Function to trigger GitLab pipelines on Secret Manager events"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Antoine R" }]
+
+dependencies = [
+    "functions-framework>=3,<4",
+    "google-cloud-secret-manager>=2,<3",
+    "requests>=2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/secret_gitlab_trigger"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/secret_gitlab_trigger"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+
+[[tool.uv.index]]
+name = "kp-python"
+url = "https://oauth2accesstoken@europe-west1-python.pkg.dev/kp-dsi/kp-python-repository/simple/"
+publish-url = "https://oauth2accesstoken@europe-west1-python.pkg.dev/kp-dsi/kp-python-repository/"
+explicit = true
