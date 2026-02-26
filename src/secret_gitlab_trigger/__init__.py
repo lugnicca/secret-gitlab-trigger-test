@@ -5,7 +5,7 @@ created, updated, or deleted. It then triggers a GitLab pipeline with
 the appropriate variables.
 """
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 import json
 import os
@@ -97,6 +97,16 @@ def handle_secret_event(cloud_event):
     """Handle Secret Manager events from Eventarc."""
     # Parse the CloudEvent data
     data = cloud_event.data
+
+    # When delivered via Pub/Sub binding, data may be bytes or contain
+    # a nested "message" wrapper.  Normalise to the audit-log dict.
+    if isinstance(data, (bytes, bytearray)):
+        data = json.loads(data)
+    if isinstance(data, dict) and "message" in data:
+        import base64
+        raw = data["message"].get("data", "")
+        data = json.loads(base64.b64decode(raw)) if raw else data
+
     proto_payload = data.get("protoPayload", {})
     method_name = proto_payload.get("methodName", "").split(".")[-1]
     resource_name = proto_payload.get("resourceName", "")
@@ -114,7 +124,7 @@ def handle_secret_event(cloud_event):
 
     if not gitlab_project_id or not trigger_token:
         print("Missing required environment variables")
-        return
+        return "Missing required environment variables", 200
 
     # Parse required labels
     try:
@@ -131,7 +141,7 @@ def handle_secret_event(cloud_event):
 
     if not check_required_labels(secret_labels, required_labels):
         print(f"Secret {secret_resource_path} does not have required labels, skipping")
-        return
+        return "Skipped: labels do not match", 200
 
     # Prepare variables for GitLab pipeline
     event_type = get_event_type(method_name)
@@ -157,6 +167,7 @@ def handle_secret_event(cloud_event):
             variables=variables,
         )
         print(f"Pipeline triggered successfully: {result.get('web_url', 'N/A')}")
+        return "OK", 200
     except requests.exceptions.RequestException as e:
         print(f"Error triggering GitLab pipeline: {e}")
         # Re-raise so Eventarc can retry transient network/API failures.
